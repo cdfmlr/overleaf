@@ -33,4 +33,4 @@ jobs:
           directory: server-ce
           file: server-ce/Dockerfile-base
           push: true
-          tags: cdfmlr/sharelatex-base:${{github.ref_name}}
+          tags: cdfmlr/sharelatex-base:${{github.ref_name}},cdfmlr/sharelatex-base:latest
