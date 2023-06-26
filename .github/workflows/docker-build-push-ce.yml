@@ -27,11 +27,12 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
       -
         name: Build and push
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v4
         with:
           platforms: linux/amd64,linux/arm64
-          directory: server-ce
+          #directory: server-ce
           file: server-ce/Dockerfile
-          buildArgs: SHARELATEX_BASE_TAG=cdfmlr/sharelatex-base:main,MONOREPO_REVISION=$(shell git rev-parse HEAD)
+          build-args: SHARELATEX_BASE_TAG=cdfmlr/sharelatex-base:main,MONOREPO_REVISION=$(shell git rev-parse HEAD)
           push: true
           tags: cdfmlr/sharelatex:${{github.ref_name}},cdfmlr/sharelatex:latest
+          # doc: https://github.com/docker/build-push-action
