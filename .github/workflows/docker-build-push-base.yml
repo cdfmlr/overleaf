@@ -31,6 +31,6 @@ jobs:
         with:
           platforms: linux/amd64,linux/arm64
           directory: server-ce
-          file: Dockerfile-base
+          file: server-ce/Dockerfile-base
           push: true
           tags: cdfmlr/sharelatex-base:${{github.ref_name}}
