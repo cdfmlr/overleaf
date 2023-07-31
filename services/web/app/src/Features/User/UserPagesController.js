@@ -126,6 +126,8 @@ async function settingsPage(req, res) {
     showPersonalAccessToken,
     personalAccessTokens,
     emailAddressLimit: Settings.emailAddressLimit,
+    isManagedAccount: !!req.managedBy,
+    userRestrictions: Array.from(req.userRestrictions || []),
   })
 }
 

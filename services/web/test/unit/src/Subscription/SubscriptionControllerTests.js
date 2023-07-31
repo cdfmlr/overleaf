@@ -78,6 +78,9 @@ describe('SubscriptionController', function () {
       promises: {
         buildUsersSubscriptionViewModel: sinon.stub().resolves({}),
       },
+      buildPlansListForSubscriptionDash: sinon
+        .stub()
+        .returns({ plans: [], planCodesChangingAtTermEnd: [] }),
     }
     this.settings = {
       coupon_codes: {
@@ -155,6 +158,10 @@ describe('SubscriptionController', function () {
           recordEventForSession: sinon.stub(),
           setUserPropertyForUser: sinon.stub(),
         }),
+        '../../../../modules/managed-users/app/src/ManagedUsersManager':
+          (this.ManagedUsersManager = {
+            hasManagedUsersFeature: sinon.stub(),
+          }),
       },
     })
 
@@ -283,10 +290,10 @@ describe('SubscriptionController', function () {
       describe('with a valid plan code', function () {
         it('should render the new subscription page', function (done) {
           this.res.render = (page, opts) => {
-            page.should.equal('subscriptions/new-refreshed')
+            page.should.equal('subscriptions/new-react')
             done()
           }
-          this.SubscriptionController.paymentPage(this.req, this.res)
+          this.SubscriptionController.paymentPage(this.req, this.res, done)
         })
       })
     })
@@ -386,6 +393,27 @@ describe('SubscriptionController', function () {
         this.SubscriptionController.paymentPage(this.req, this.res)
       })
     })
+
+    describe('with a user from a restricted country', function () {
+      beforeEach(function () {
+        this.LimitationsManager.promises.userHasV1OrV2Subscription.resolves(
+          false
+        )
+        this.PlansLocator.findLocalPlanInSettings.returns({})
+        this.GeoIpLookup.promises.getCurrencyCode.resolves({
+          currencyCode: this.stubbedCurrencyCode,
+          countryCode: 'KP',
+        })
+      })
+
+      it('should render the restricted country page', function (done) {
+        this.res.render = (page, opts) => {
+          page.should.equal('subscriptions/restricted-country')
+          done()
+        }
+        this.SubscriptionController.paymentPage(this.req, this.res, done)
+      })
+    })
   })
 
   describe('successfulSubscription', function () {
@@ -407,7 +435,7 @@ describe('SubscriptionController', function () {
         }
       )
       this.res.render = (url, variables) => {
-        url.should.equal('subscriptions/successful-subscription')
+        url.should.equal('subscriptions/successful-subscription-react')
         assert.deepEqual(variables, {
           title: 'thank_you',
           personalSubscription: 'foo',
@@ -448,13 +476,19 @@ describe('SubscriptionController', function () {
       this.SubscriptionViewModelBuilder.buildPlansList.returns(
         (this.plans = { plans: 'mock' })
       )
+      this.SubscriptionViewModelBuilder.buildPlansListForSubscriptionDash.returns(
+        {
+          plans: this.plans,
+          planCodesChangingAtTermEnd: [],
+        }
+      )
       this.LimitationsManager.promises.userHasV1OrV2Subscription.resolves(false)
       this.res.render = (view, data) => {
         this.data = data
-        expect(view).to.equal('subscriptions/dashboard')
+        expect(view).to.equal('subscriptions/dashboard-react')
         done()
       }
-      this.SubscriptionController.userSubscriptionPage(this.req, this.res)
+      this.SubscriptionController.userSubscriptionPage(this.req, this.res, done)
     })
 
     it('should load the personal, groups and v1 subscriptions', function () {
@@ -472,6 +506,10 @@ describe('SubscriptionController', function () {
 
     it('should load the plans', function () {
       expect(this.data.plans).to.deep.equal(this.plans)
+    })
+
+    it('should load an empty list of groups with settings available', function () {
+      expect(this.data.groupSettingsEnabledFor).to.deep.equal([])
     })
   })
 
@@ -636,26 +674,76 @@ describe('SubscriptionController', function () {
   })
 
   describe('reactivateSubscription', function () {
-    beforeEach(function (done) {
-      this.res = {
-        redirect() {
+    describe('when the user has permission', function () {
+      beforeEach(function (done) {
+        this.res = {
+          redirect() {
+            done()
+          },
+        }
+        this.req.assertPermission = sinon.stub()
+        this.next = sinon.stub().callsFake(error => {
+          done(error)
+        })
+        sinon.spy(this.res, 'redirect')
+        this.SubscriptionController.reactivateSubscription(
+          this.req,
+          this.res,
+          this.next
+        )
+      })
+
+      it('should assert the user has permission to reactivate their subscription', function (done) {
+        this.req.assertPermission
+          .calledWith('reactivate-subscription')
+          .should.equal(true)
+        done()
+      })
+
+      it('should tell the handler to reactivate this user', function (done) {
+        this.SubscriptionHandler.reactivateSubscription
+          .calledWith(this.user)
+          .should.equal(true)
+        done()
+      })
+
+      it('should redurect to the subscription page', function (done) {
+        this.res.redirect.calledWith('/user/subscription').should.equal(true)
+        done()
+      })
+    })
+
+    describe('when the user does not have permission', function () {
+      beforeEach(function (done) {
+        this.res = {
+          redirect() {
+            done()
+          },
+        }
+        this.req.assertPermission = sinon.stub().throws()
+        this.next = sinon.stub().callsFake(() => {
           done()
-        },
-      }
-      sinon.spy(this.res, 'redirect')
-      this.SubscriptionController.reactivateSubscription(this.req, this.res)
-    })
+        })
+        sinon.spy(this.res, 'redirect')
+        this.SubscriptionController.reactivateSubscription(
+          this.req,
+          this.res,
+          this.next
+        )
+      })
 
-    it('should tell the handler to reactivate this user', function (done) {
-      this.SubscriptionHandler.reactivateSubscription
-        .calledWith(this.user)
-        .should.equal(true)
-      done()
-    })
+      it('should not reactivate the user', function (done) {
+        this.req.assertPermission = sinon.stub().throws()
+        this.SubscriptionHandler.reactivateSubscription.called.should.equal(
+          false
+        )
+        done()
+      })
 
-    it('should redurect to the subscription page', function (done) {
-      this.res.redirect.calledWith('/user/subscription').should.equal(true)
-      done()
+      it('should call next with an error', function (done) {
+        this.next.calledWith(sinon.match.instanceOf(Error)).should.equal(true)
+        done()
+      })
     })
   })
 

@@ -249,8 +249,6 @@ const settings = {
     },
     project_history: {
       sendProjectStructureOps: true,
-      initializeHistoryForNewProjects: process.env.SHARELATEX_FPH_INITIALIZE_NEW_PROJECTS === 'true',
-      displayHistoryForNewProjects: process.env.SHARELATEX_FPH_DISPLAY_NEW_PROJECTS === 'true',
       url: 'http://localhost:3054',
     },
     v1_history: {
@@ -399,7 +397,7 @@ if (
     pattern: process.env.SHARELATEX_PASSWORD_VALIDATION_PATTERN || 'aA$3',
     length: {
       min: process.env.SHARELATEX_PASSWORD_VALIDATION_MIN_LENGTH || 8,
-      max: process.env.SHARELATEX_PASSWORD_VALIDATION_MAX_LENGTH || 150,
+      max: process.env.SHARELATEX_PASSWORD_VALIDATION_MAX_LENGTH || 72,
     },
   }
 }

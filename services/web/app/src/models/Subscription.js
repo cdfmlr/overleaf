@@ -21,6 +21,7 @@ const SubscriptionSchema = new Schema(
       },
     },
     member_ids: [{ type: ObjectId, ref: 'User' }],
+    groupPolicy: { type: ObjectId, ref: 'GroupPolicy' },
     invited_emails: [String],
     teamInvites: [TeamInviteSchema],
     recurlySubscription_id: String,
@@ -30,6 +31,7 @@ const SubscriptionSchema = new Schema(
     groupPlan: { type: Boolean, default: false },
     membersLimit: { type: Number, default: 0 },
     customAccount: Boolean,
+    features: { managedUsers: { type: Boolean, default: false } },
     overleaf: {
       id: {
         type: Number,
